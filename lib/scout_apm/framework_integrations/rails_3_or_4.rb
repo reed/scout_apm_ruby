@@ -71,10 +71,18 @@ module ScoutApm
       #
       # We avoid this issue by not calling .respond_to? here, and instead using the less optimal `rescue nil` approach
       def raw_database_adapter
-        adapter = ActiveRecord::Base.connection_config[:adapter].to_s rescue nil
+        if Gem::Version.new(Rails::VERSION::STRING) >= Gem::Version.new('6.1.0')
+          adapter = ActiveRecord::Base.connection_db_config.configuration_hash[:adapter] rescue nil
 
-        if adapter.nil?
-          adapter = ActiveRecord::Base.configurations[env]["adapter"]
+          if adapter.nil?
+            adapter = ActiveRecord::Base.configurations.configs_for(env_name: env).first&.adapter
+          end
+        else
+          adapter = ActiveRecord::Base.connection_config[:adapter].to_s rescue nil
+
+          if adapter.nil?
+            adapter = ActiveRecord::Base.configurations[env]["adapter"]
+          end
         end
 
         return adapter
